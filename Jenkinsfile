@@ -3,6 +3,7 @@ pipeline {
     environment {
         dockerimagename = "bravinwasike/react-app"
         dockerImage = ""
+        registryCredential = 'dockerhub-credentials'
     }
 
     agent any
@@ -11,38 +12,33 @@ pipeline {
 
         stage('Checkout Source') {
             steps {
-                // FIX APPLIED: Explicitly specifying the 'main' branch.
-                git url: 'https://github.com/Bravinsimiyu/jenkins-kubernetes-deployment.git', branch: 'main' 
+                git url: 'https://github.com/Bravinsimiyu/jenkins-kubernetes-deployment.git', branch: 'main'
             }
         }
 
         stage('Build image') {
             steps{
                 script {
-                    dockerImage = docker.build dockerimagename
+                    dockerImage = docker.build(dockerimagename)
                 }
             }
         }
 
-        stage('Pushing Image') {
-            environment {
-                // Ensure 'dockerhub-credentials' is the correct ID for your DockerHub login
-                registryCredential = 'dockerhub-credentials'
-            }
+        stage('Push Image') {
             steps{
                 script {
-                    docker.withRegistry( 'https://registry.hub.docker.com', registryCredential ) {
+                    docker.withRegistry('https://index.docker.io/v1/', registryCredential) {
                         dockerImage.push("latest")
                     }
                 }
             }
         }
 
-        stage('Deploying React.js container to Kubernetes') {
+        stage('Deploy to Kubernetes') {
             steps {
                 script {
-                    // Ensure you are running on an agent/node with access to 'kubectl' and Kubernetes
-                    kubernetesDeploy(configs: "deployment.yaml", "service.yaml")
+                    sh "kubectl apply -f deployment.yaml"
+                    sh "kubectl apply -f service.yaml"
                 }
             }
         }
